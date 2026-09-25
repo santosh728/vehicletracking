@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getDb } from "../../../lib/mongodb";
 import { requireSuperAdmin } from "../../../lib/auth";
-import { isUsername } from "../../../lib/validation";
+import { isUsername, isMobile } from "../../../lib/validation";
 
 export async function GET() {
   try {
@@ -29,8 +29,8 @@ export async function POST(request: Request) {
     const mobile = String(body.mobile || "").trim();
     const address = String(body.address || "").trim();
     const role = body.role === "super_admin" ? "super_admin" : "user";
-    if (!fullName || !isUsername(username) || password.length < 6 || !email.includes("@") || !mobile || !address) {
-      return NextResponse.json({ error: "Complete all fields; password must be at least 6 characters." }, { status: 400 });
+    if (!fullName || !isUsername(username) || password.length < 6 || !email.includes("@") || !isMobile(mobile) || !address) {
+      return NextResponse.json({ error: !isMobile(mobile) ? "Mobile number must be exactly 10 digits." : "Complete all fields; password must be at least 6 characters." }, { status: 400 });
     }
     const db = await getDb();
     const existing = await db.collection("users").findOne({ $or: [{ username }, { email }] });
