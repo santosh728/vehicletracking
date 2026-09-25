@@ -46,6 +46,7 @@ export default function Dashboard({ session }: { session: SessionUser }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [busyText, setBusyText] = useState("Please wait…");
   const formRef = useRef<HTMLFormElement>(null);
 
   async function load(q = query) {
@@ -68,6 +69,7 @@ export default function Dashboard({ session }: { session: SessionUser }) {
     event.preventDefault();
     setError(""); setMessage("");
     setBusy(true);
+    setBusyText("Saving vehicle…");
     const form = new FormData(event.currentTarget);
     const response = await fetch("/api/vehicles", {
       method: "POST",
@@ -87,14 +89,17 @@ export default function Dashboard({ session }: { session: SessionUser }) {
 
   async function removeVehicle(id: string) {
     if (!confirm("Remove this vehicle entry?")) return;
+    setBusy(true);
+    setBusyText("Removing vehicle…");
     const response = await fetch(`/api/vehicles/${id}`, { method: "DELETE" });
+    setBusy(false);
     if (!response.ok) {
       const result = await response.json();
       setError(result.error || "Unable to remove vehicle.");
       return;
     }
-    // Remove from state instantly — no reload needed
     setVehicles(prev => prev.filter(v => v._id !== id));
+    await load();
   }
 
   const counts = vehicles.reduce((result, vehicle) => {
@@ -108,7 +113,7 @@ export default function Dashboard({ session }: { session: SessionUser }) {
 
   return (
     <>
-      {busy && <TruckSpinner text="Saving vehicle…" />}
+      {busy && <TruckSpinner text={busyText} />}
       <div className="app-shell">
         <aside className="sidebar">
           <Link className="brand" href="/">
