@@ -131,28 +131,29 @@ td small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
 
 /* Row action buttons */
 .row-actions{display:flex;gap:6px;align-items:center}
-.action-btn{border:0;padding:5px 10px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;font-family:inherit;letter-spacing:.3px;text-transform:uppercase}
+.action-btn{border:0;padding:5px 11px;font-size:10px;font-weight:700;border-radius:2px;cursor:pointer;font-family:inherit;letter-spacing:.3px}
 .action-edit{background:var(--green-soft);color:var(--green)}.action-edit:hover{background:#c8ecd6}
 .action-delete{background:var(--red-soft);color:var(--red)}.action-delete:hover{background:#f8d0ce}
 
-/* Editing highlight */
-.row-editing td{background:#f0faf5 !important;border-left:none !important}
+/* ── Modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,20,16,.7);backdrop-filter:blur(4px);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#fff;border-radius:6px;width:100%;max-width:620px;max-height:92vh;overflow-y:auto;box-shadow:0 40px 100px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:24px 28px 18px;border-bottom:1px solid var(--line)}
+.modal-title{font-size:20px;letter-spacing:-.5px;margin:6px 0 0;color:var(--ink)}
+.modal-close{border:0;background:transparent;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;padding:2px 6px;border-radius:3px}.modal-close:hover{background:var(--red-soft);color:var(--red)}
+.modal-form{padding:22px 28px 0;display:flex;flex-direction:column;gap:0}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal-col-full{grid-column:1/-1}
+.modal-grid label{display:block;color:#3a524a;font-size:11px;font-weight:700}
+.modal-grid input,.modal-grid select{display:block;width:100%;margin-top:6px;border:1px solid #c8d8d0;background:#f4f8f6;padding:11px 12px;outline:none;color:var(--ink);border-radius:3px;font-size:13px;font-family:inherit}
+.modal-grid input:focus,.modal-grid select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(44,139,97,.12);background:#fff}
+.label-hint{color:var(--muted);font-weight:400;font-size:10px;margin-left:4px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid var(--line);margin-top:22px}
+.modal-save-btn{width:auto;padding:11px 22px}
+.btn-outline{border:1px solid var(--line);background:#fff;color:var(--ink);padding:11px 18px;font-weight:700;font-size:12px;border-radius:2px;cursor:pointer;font-family:inherit}.btn-outline:hover{background:var(--paper)}
+.user-count{color:var(--muted);font-size:13px;font-weight:500}
 
-/* Inline edit panel */
-.edit-row td{padding:0 !important;border-top:2px solid var(--green) !important}
-.edit-panel{background:#f5faf7;border-bottom:2px solid var(--green);padding:20px 25px 24px}
-.edit-panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.edit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.edit-full{grid-column:1/-1}
-.edit-grid label{display:block;color:#3a524a;font-size:11px;font-weight:700}
-.edit-grid input,.edit-grid select{display:block;width:100%;margin-top:5px;border:1px solid #c8d8d0;background:#fff;padding:9px 11px;outline:none;color:var(--ink);border-radius:3px;font-size:13px;font-family:inherit}
-.edit-grid input:focus,.edit-grid select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(44,139,97,.12)}
-.muted-label{color:var(--muted);font-weight:400;font-size:10px}
-.edit-actions{display:flex;gap:10px;margin-top:18px;align-items:center}
-.edit-save-btn{width:auto;padding:11px 20px}
-.button-outline{border:1px solid var(--line);background:transparent;color:var(--ink);padding:11px 18px;font-weight:700;font-size:12px;display:flex;align-items:center;border-radius:2px;width:auto}.button-outline:hover{background:var(--paper)}
-
-@media(max-width:700px){.edit-grid{grid-template-columns:1fr}.edit-full{grid-column:auto}}
+@media(max-width:600px){.modal-grid{grid-template-columns:1fr}.modal-col-full{grid-column:auto}.modal-box{max-height:100vh;border-radius:0}.modal-backdrop{padding:0}}
 
 /* ── Truck loader ── */
 .loader-overlay{position:fixed;inset:0;background:rgba(24,35,31,.7);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center}

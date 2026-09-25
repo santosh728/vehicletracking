@@ -25,7 +25,7 @@ function TruckSpinner({ text }: { text: string }) {
     <div className="loader-overlay">
       <div className="loader-box">
         <div className="truck-anim">
-          <svg viewBox="0 0 64 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="truck-svg">
+          <svg viewBox="0 0 64 32" fill="none" className="truck-svg">
             <rect x="2" y="10" width="36" height="16" rx="2" fill="#2c8b61" />
             <rect x="38" y="14" width="18" height="12" rx="2" fill="#1b6e4d" />
             <rect x="40" y="16" width="8" height="6" rx="1" fill="#a8e6c8" />
@@ -43,19 +43,123 @@ function TruckSpinner({ text }: { text: string }) {
   );
 }
 
-export default function UsersPanel({ session }: { session: SessionUser }) {
-  const [users, setUsers]           = useState<User[]>([]);
-  const [search, setSearch]         = useState("");
-  const [error, setError]           = useState("");
-  const [message, setMessage]       = useState("");
-  const [busy, setBusy]             = useState(false);
-  const [busyText, setBusyText]     = useState("Please wait…");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+/* ── Edit Modal ── */
+function EditModal({
+  user, busy, onClose, onSave,
+}: {
+  user: User;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (id: string, form: EditForm) => Promise<void>;
+}) {
+  const [form, setForm] = useState<EditForm>({
+    fullName: user.fullName, email: user.email, mobile: user.mobile,
+    address: user.address, username: user.username, role: user.role, password: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // editing state
-  const [editingId, setEditingId]   = useState<string | null>(null);
-  const [editForm, setEditForm]     = useState<EditForm>({ fullName:"", email:"", mobile:"", address:"", username:"", role:"user", password:"" });
-  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  function f(field: keyof EditForm) {
+    return {
+      value: form[field],
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+        setForm(p => ({ ...p, [field]: e.target.value })),
+    };
+  }
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!form.fullName.trim())           e.fullName = "Required.";
+    if (!form.email.includes("@"))       e.email    = "Enter a valid email.";
+    if (!/^\d{10}$/.test(form.mobile))   e.mobile   = "Must be exactly 10 digits.";
+    if (!form.address.trim())            e.address  = "Required.";
+    if (!form.username.trim())           e.username = "Required.";
+    if (form.password && form.password.length < 6) e.password = "Min. 6 characters.";
+    return e;
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    await onSave(user._id, form);
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={e => { if ((e.target as HTMLElement).classList.contains("modal-backdrop")) onClose(); }}>
+      <div className="modal-box" role="dialog" aria-modal="true" aria-label="Edit user">
+        {/* Header */}
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">EDIT USER</span>
+            <h2 className="modal-title">{user.fullName || user.username}</h2>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={submit} noValidate className="modal-form">
+          <div className="modal-grid">
+            <label>Full name <span className="req">*</span>
+              <input {...f("fullName")} placeholder="Full name" autoFocus />
+              {errors.fullName && <span className="field-error">{errors.fullName}</span>}
+            </label>
+
+            <label>Email address <span className="req">*</span>
+              <input type="email" {...f("email")} placeholder="Email" />
+              {errors.email && <span className="field-error">{errors.email}</span>}
+            </label>
+
+            <label>Mobile number <span className="req">*</span>
+              <input {...f("mobile")} placeholder="10-digit mobile" maxLength={10} inputMode="numeric" />
+              {errors.mobile && <span className="field-error">{errors.mobile}</span>}
+            </label>
+
+            <label>Username <span className="req">*</span>
+              <input {...f("username")} placeholder="Username" autoComplete="off" />
+              {errors.username && <span className="field-error">{errors.username}</span>}
+            </label>
+
+            <label className="modal-col-full">Address <span className="req">*</span>
+              <input {...f("address")} placeholder="Full address" />
+              {errors.address && <span className="field-error">{errors.address}</span>}
+            </label>
+
+            <label>Role
+              <select {...f("role")}>
+                <option value="user">User</option>
+                <option value="super_admin">Super admin</option>
+              </select>
+            </label>
+
+            <label>New password <small className="label-hint">(leave blank to keep current)</small>
+              <input type="password" {...f("password")} placeholder="Min. 6 characters" autoComplete="new-password" />
+              {errors.password && <span className="field-error">{errors.password}</span>}
+            </label>
+          </div>
+
+          {/* Footer */}
+          <div className="modal-footer">
+            <button type="button" className="btn-outline" onClick={onClose} disabled={busy}>Cancel</button>
+            <button type="submit" className="button button-primary modal-save-btn" disabled={busy}>
+              {busy ? "Saving…" : "Save changes"} <span>→</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main panel ── */
+export default function UsersPanel({ session }: { session: SessionUser }) {
+  const [users, setUsers]             = useState<User[]>([]);
+  const [search, setSearch]           = useState("");
+  const [error, setError]             = useState("");
+  const [message, setMessage]         = useState("");
+  const [busy, setBusy]               = useState(false);
+  const [busyText, setBusyText]       = useState("Please wait…");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [editUser, setEditUser]       = useState<User | null>(null);
 
   async function load() {
     const res = await fetch("/api/users");
@@ -73,30 +177,32 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    return !q || u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) || u.mobile.includes(q);
+    return !q || u.fullName.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.mobile.includes(q);
   });
 
   /* ── Create ── */
   function validateCreate(d: Record<string, string>) {
     const e: Record<string, string> = {};
-    if (!d.fullName?.trim())            e.fullName = "Full name is required.";
-    if (!d.email?.includes("@"))        e.email    = "Enter a valid email address.";
-    if (!/^\d{10}$/.test(d.mobile||"")) e.mobile   = "Mobile must be exactly 10 digits.";
-    if (!d.address?.trim())             e.address  = "Address is required.";
-    if (!d.username?.trim())            e.username = "Username is required.";
-    if ((d.password||"").length < 6)    e.password = "Password must be at least 6 characters.";
+    if (!d.fullName?.trim())             e.fullName = "Full name is required.";
+    if (!d.email?.includes("@"))         e.email    = "Enter a valid email address.";
+    if (!/^\d{10}$/.test(d.mobile || "")) e.mobile  = "Mobile must be exactly 10 digits.";
+    if (!d.address?.trim())              e.address  = "Address is required.";
+    if (!d.username?.trim())             e.username = "Username is required.";
+    if ((d.password || "").length < 6)   e.password = "Password must be at least 6 characters.";
     return e;
   }
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(""); setMessage(""); setFieldErrors({});
-    const data = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<string,string>;
+    const data = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<string, string>;
     const errs = validateCreate(data);
     if (Object.keys(errs).length) { setFieldErrors(errs); return; }
     setBusy(true); setBusyText("Creating account…");
-    const res = await fetch("/api/users", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) });
+    const res = await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
     const result = await res.json();
     setBusy(false);
     if (!res.ok) { setError(result.error || "Unable to create user."); return; }
@@ -109,64 +215,44 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
   async function deleteUser(user: User) {
     if (!confirm(`Delete "${user.fullName || user.username}"? This cannot be undone.`)) return;
     setBusy(true); setBusyText("Deleting user…");
-    const res = await fetch(`/api/users/${user._id}`, { method:"DELETE" });
+    const res = await fetch(`/api/users/${user._id}`, { method: "DELETE" });
     const result = await res.json();
     setBusy(false);
     if (!res.ok) { setError(result.error || "Unable to delete user."); return; }
     setMessage(`User "${user.fullName || user.username}" deleted.`);
     setUsers(prev => prev.filter(u => u._id !== user._id));
-    if (editingId === user._id) setEditingId(null);
+    if (editUser?._id === user._id) setEditUser(null);
   }
 
-  /* ── Open edit ── */
-  function openEdit(user: User) {
-    setEditingId(user._id);
-    setEditErrors({});
-    setEditForm({ fullName: user.fullName, email: user.email, mobile: user.mobile,
-      address: user.address, username: user.username, role: user.role, password: "" });
-  }
-
-  function validateEdit() {
-    const e: Record<string, string> = {};
-    if (!editForm.fullName.trim())             e.fullName = "Required.";
-    if (!editForm.email.includes("@"))         e.email    = "Enter a valid email.";
-    if (!/^\d{10}$/.test(editForm.mobile))     e.mobile   = "Must be 10 digits.";
-    if (!editForm.address.trim())              e.address  = "Required.";
-    if (!editForm.username.trim())             e.username = "Required.";
-    if (editForm.password && editForm.password.length < 6) e.password = "Min. 6 characters.";
-    return e;
-  }
-
-  /* ── Save edit ── */
-  async function saveEdit(userId: string) {
+  /* ── Save edit (from modal) ── */
+  async function saveEdit(userId: string, form: EditForm) {
     setError(""); setMessage("");
-    const errs = validateEdit();
-    if (Object.keys(errs).length) { setEditErrors(errs); return; }
     setBusy(true); setBusyText("Saving changes…");
     const res = await fetch(`/api/users/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify(form),
     });
     const result = await res.json();
     setBusy(false);
     if (!res.ok) { setError(result.error || "Unable to update user."); return; }
     setMessage("User updated successfully.");
-    setEditingId(null);
+    setEditUser(null);
     await load();
-  }
-
-  function inp(field: keyof EditForm) {
-    return {
-      value: editForm[field],
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-        setEditForm(prev => ({ ...prev, [field]: e.target.value })),
-    };
   }
 
   return (
     <>
       {busy && <TruckSpinner text={busyText} />}
+      {editUser && (
+        <EditModal
+          user={editUser}
+          busy={busy}
+          onClose={() => setEditUser(null)}
+          onSave={saveEdit}
+        />
+      )}
+
       <div className="app-shell">
         <aside className="sidebar">
           <Link className="brand" href="/">
@@ -203,7 +289,7 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
 
           <div className="content-grid">
 
-            {/* ── Users table ── */}
+            {/* Users table */}
             <section className="panel table-panel">
               <div className="panel-heading">
                 <div>
@@ -240,102 +326,43 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
                         </div>
                       </td></tr>
                     )}
-
                     {filtered.map(user => (
-                      <>
-                        {/* ── Normal row ── */}
-                        <tr key={user._id} className={editingId === user._id ? "row-editing" : ""}>
-                          <td>
-                            <strong>{user.fullName || "—"}</strong>
-                            <small>{user.address}</small>
-                          </td>
-                          <td>
-                            {user.email}
-                            <small>{user.mobile}</small>
-                          </td>
-                          <td>{user.username}</td>
-                          <td>
-                            <span className={`badge ${user.role === "super_admin" ? "badge-on-track" : "badge-due-soon"}`}>
-                              <span />{user.role === "super_admin" ? "Super admin" : "User"}
-                            </span>
-                          </td>
-                          <td>{user.vehicleCount}</td>
-                          <td>
-                            <div className="row-actions">
-                              <button className="action-btn action-edit"
-                                onClick={() => editingId === user._id ? setEditingId(null) : openEdit(user)}
-                                title={editingId === user._id ? "Cancel edit" : "Edit user"}>
-                                {editingId === user._id ? "Cancel" : "Edit"}
+                      <tr key={user._id}>
+                        <td>
+                          <strong>{user.fullName || "—"}</strong>
+                          <small>{user.address}</small>
+                        </td>
+                        <td>
+                          {user.email}
+                          <small>{user.mobile}</small>
+                        </td>
+                        <td>{user.username}</td>
+                        <td>
+                          <span className={`badge ${user.role === "super_admin" ? "badge-on-track" : "badge-due-soon"}`}>
+                            <span />{user.role === "super_admin" ? "Super admin" : "User"}
+                          </span>
+                        </td>
+                        <td>{user.vehicleCount}</td>
+                        <td>
+                          <div className="row-actions">
+                            <button className="action-btn action-edit" onClick={() => setEditUser(user)} title="Edit user">
+                              ✏ Edit
+                            </button>
+                            {session.id !== user._id && (
+                              <button className="action-btn action-delete" onClick={() => void deleteUser(user)} title="Delete user">
+                                ✕ Delete
                               </button>
-                              {session.id !== user._id && (
-                                <button className="action-btn action-delete"
-                                  onClick={() => void deleteUser(user)} title="Delete user">
-                                  Delete
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* ── Inline edit row ── */}
-                        {editingId === user._id && (
-                          <tr key={`edit-${user._id}`} className="edit-row">
-                            <td colSpan={6}>
-                              <div className="edit-panel">
-                                <div className="edit-panel-head">
-                                  <span className="eyebrow">EDITING — {user.username}</span>
-                                  <button className="clear-search" onClick={() => setEditingId(null)}>✕ Close</button>
-                                </div>
-                                <div className="edit-grid">
-                                  <label>Full name <span className="req">*</span>
-                                    <input {...inp("fullName")} placeholder="Full name" />
-                                    {editErrors.fullName && <span className="field-error">{editErrors.fullName}</span>}
-                                  </label>
-                                  <label>Email <span className="req">*</span>
-                                    <input type="email" {...inp("email")} placeholder="Email" />
-                                    {editErrors.email && <span className="field-error">{editErrors.email}</span>}
-                                  </label>
-                                  <label>Mobile <span className="req">*</span>
-                                    <input {...inp("mobile")} placeholder="10-digit mobile" maxLength={10} inputMode="numeric" />
-                                    {editErrors.mobile && <span className="field-error">{editErrors.mobile}</span>}
-                                  </label>
-                                  <label>Username <span className="req">*</span>
-                                    <input {...inp("username")} placeholder="Username" />
-                                    {editErrors.username && <span className="field-error">{editErrors.username}</span>}
-                                  </label>
-                                  <label className="edit-full">Address <span className="req">*</span>
-                                    <input {...inp("address")} placeholder="Address" />
-                                    {editErrors.address && <span className="field-error">{editErrors.address}</span>}
-                                  </label>
-                                  <label>Role
-                                    <select {...inp("role")}>
-                                      <option value="user">User</option>
-                                      <option value="super_admin">Super admin</option>
-                                    </select>
-                                  </label>
-                                  <label>New password <small className="muted-label">(leave blank to keep current)</small>
-                                    <input type="password" {...inp("password")} placeholder="Min. 6 characters" autoComplete="new-password" />
-                                    {editErrors.password && <span className="field-error">{editErrors.password}</span>}
-                                  </label>
-                                </div>
-                                <div className="edit-actions">
-                                  <button className="button button-primary edit-save-btn" onClick={() => void saveEdit(user._id)} disabled={busy}>
-                                    {busy ? "Saving…" : "Save changes"} <span>→</span>
-                                  </button>
-                                  <button className="button button-outline" onClick={() => setEditingId(null)}>Cancel</button>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </section>
 
-            {/* ── Create user form ── */}
+            {/* Create user form */}
             <section className="panel add-panel">
               <div className="panel-heading">
                 <div>
