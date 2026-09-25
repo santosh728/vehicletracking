@@ -149,6 +149,10 @@ td small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
 .modal-grid input:focus,.modal-grid select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(44,139,97,.12);background:#fff}
 .label-hint{color:var(--muted);font-weight:400;font-size:10px;margin-left:4px}
 .modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:20px 28px;border-top:1px solid var(--line);margin-top:22px}
+
+/* reCAPTCHA */
+.recaptcha-wrap{margin:4px 0 8px;display:flex;justify-content:flex-start}
+.recaptcha-wrap iframe{border-radius:3px}
 .modal-save-btn{width:auto;padding:11px 22px}
 .btn-outline{border:1px solid var(--line);background:#fff;color:var(--ink);padding:11px 18px;font-weight:700;font-size:12px;border-radius:2px;cursor:pointer;font-family:inherit}.btn-outline:hover{background:var(--paper)}
 .user-count{color:var(--muted);font-size:13px;font-weight:500}
