@@ -15,7 +15,7 @@ type User = {
   vehicleCount: number;
 };
 
-function TruckSpinner() {
+function TruckSpinner({ text }: { text: string }) {
   return (
     <div className="loader-overlay">
       <div className="loader-box">
@@ -32,7 +32,7 @@ function TruckSpinner() {
           </svg>
           <div className="truck-road" />
         </div>
-        <p className="loader-text">Creating account…</p>
+        <p className="loader-text">{text}</p>
       </div>
     </div>
   );
@@ -40,9 +40,11 @@ function TruckSpinner() {
 
 export default function UsersPanel({ session }: { session: SessionUser }) {
   const [users, setUsers] = useState<User[]>([]);
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [busyText, setBusyText] = useState("Please wait…");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function load() {
@@ -53,6 +55,23 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
   }
 
   useEffect(() => { void load(); }, []);
+
+  // Auto-clear success message after 4s
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(""), 4000);
+    return () => clearTimeout(t);
+  }, [message]);
+
+  // Filtered list based on search
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    return !q ||
+      u.fullName.toLowerCase().includes(q) ||
+      u.username.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.mobile.includes(q);
+  });
 
   function validate(data: Record<string, string>) {
     const errs: Record<string, string> = {};
@@ -67,20 +86,12 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setMessage("");
-    setFieldErrors({});
-
+    setError(""); setMessage(""); setFieldErrors({});
     const formData = new FormData(event.currentTarget);
     const data = Object.fromEntries(formData.entries()) as Record<string, string>;
-
     const errs = validate(data);
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs);
-      return;
-    }
-
-    setBusy(true);
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    setBusy(true); setBusyText("Creating account…");
     const response = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,7 +99,6 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
     });
     const result = await response.json();
     setBusy(false);
-
     if (!response.ok) {
       setError(result.error || "Unable to create user.");
     } else {
@@ -99,29 +109,35 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
     }
   }
 
+  async function deleteUser(user: User) {
+    if (!confirm(`Delete user "${user.fullName || user.username}"? This cannot be undone.`)) return;
+    setBusy(true); setBusyText("Deleting user…");
+    const response = await fetch(`/api/users/${user._id}`, { method: "DELETE" });
+    const result = await response.json();
+    setBusy(false);
+    if (!response.ok) {
+      setError(result.error || "Unable to delete user.");
+    } else {
+      setMessage(`User "${user.fullName || user.username}" deleted.`);
+      setUsers(prev => prev.filter(u => u._id !== user._id));
+    }
+  }
+
   return (
     <>
-      {busy && <TruckSpinner />}
+      {busy && <TruckSpinner text={busyText} />}
       <div className="app-shell">
         <aside className="sidebar">
           <Link className="brand" href="/">
             <span className="brand-mark">RW</span>
-            <span>
-              <strong>RouteWatch</strong>
-              <small>warehouse control</small>
-            </span>
+            <span><strong>RouteWatch</strong><small>warehouse control</small></span>
           </Link>
           <nav>
-            <Link className="nav-link" href="/">
-              <span className="nav-icon">⊞</span>Tracking desk
-            </Link>
-            <Link className="nav-link active" href="/users">
-              <span className="nav-icon">⊞</span>Manage users
-            </Link>
+            <Link className="nav-link" href="/"><span className="nav-icon">⊞</span>Tracking desk</Link>
+            <Link className="nav-link active" href="/users"><span className="nav-icon">⊞</span>Manage users</Link>
           </nav>
           <div className="sidebar-footer">
-            <span className="status-dot" /> Super admin
-            <br />
+            <span className="status-dot" /> Super admin<br />
             <small>Full system access</small>
           </div>
         </aside>
@@ -138,7 +154,7 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
                 <strong>{session.fullName || session.username}</strong>
                 <small>{session.mobile}</small>
               </span>
-              <Link href="/">Back</Link>
+              <Link href="/" className="link-button">← Back</Link>
             </div>
           </header>
 
@@ -151,9 +167,22 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
               <div className="panel-heading">
                 <div>
                   <span className="eyebrow">ACCOUNT DIRECTORY</span>
-                  <h2>System users</h2>
+                  <h2>System users <span className="user-count">({users.length})</span></h2>
                 </div>
               </div>
+
+              {/* Search bar */}
+              <div className="search-bar">
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by name, username, email or mobile…"
+                />
+                {search && (
+                  <button type="button" className="clear-search" onClick={() => setSearch("")}>✕</button>
+                )}
+              </div>
+
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -163,21 +192,22 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
                       <th>Username</th>
                       <th>Role</th>
                       <th>Vehicles</th>
+                      <th />
                     </tr>
                   </thead>
                   <tbody>
-                    {users.length === 0 && (
+                    {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={5}>
+                        <td colSpan={6}>
                           <div className="empty-state">
                             <div className="empty-icon">👤</div>
-                            <h3>No users yet</h3>
-                            <p>Create the first user using the form.</p>
+                            <h3>{search ? "No matching users" : "No users yet"}</h3>
+                            <p>{search ? "Try a different search." : "Create the first user using the form."}</p>
                           </div>
                         </td>
                       </tr>
                     )}
-                    {users.map(user => (
+                    {filtered.map(user => (
                       <tr key={user._id}>
                         <td>
                           <strong>{user.fullName || "Profile incomplete"}</strong>
@@ -195,6 +225,17 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
                           </span>
                         </td>
                         <td>{user.vehicleCount}</td>
+                        <td>
+                          {/* Don't show delete for self */}
+                          {session.id !== user._id && (
+                            <button
+                              className="icon-button"
+                              onClick={() => void deleteUser(user)}
+                              aria-label={`Delete ${user.username}`}
+                              title="Delete user"
+                            >✕</button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -216,43 +257,31 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
                   <input name="fullName" placeholder="e.g. Ramesh Kumar" />
                   {fieldErrors.fullName && <span className="field-error">{fieldErrors.fullName}</span>}
                 </label>
-
                 <label>
                   Email address <span className="req">*</span>
                   <input type="email" name="email" placeholder="e.g. ramesh@example.com" />
                   {fieldErrors.email && <span className="field-error">{fieldErrors.email}</span>}
                 </label>
-
                 <label>
                   Mobile number <span className="req">*</span>
-                  <input
-                    name="mobile"
-                    placeholder="10-digit number"
-                    maxLength={10}
-                    inputMode="numeric"
-                    pattern="\d{10}"
-                  />
+                  <input name="mobile" placeholder="10-digit number" maxLength={10} inputMode="numeric" pattern="\d{10}" />
                   {fieldErrors.mobile && <span className="field-error">{fieldErrors.mobile}</span>}
                 </label>
-
                 <label>
                   Address <span className="req">*</span>
                   <textarea name="address" rows={2} placeholder="Full address" />
                   {fieldErrors.address && <span className="field-error">{fieldErrors.address}</span>}
                 </label>
-
                 <label>
                   Username <span className="req">*</span>
                   <input name="username" placeholder="e.g. ramesh_k" autoComplete="off" />
                   {fieldErrors.username && <span className="field-error">{fieldErrors.username}</span>}
                 </label>
-
                 <label>
                   Password <span className="req">*</span>
                   <input type="password" name="password" placeholder="Min. 6 characters" autoComplete="new-password" />
                   {fieldErrors.password && <span className="field-error">{fieldErrors.password}</span>}
                 </label>
-
                 <label>
                   Role <span className="req">*</span>
                   <select name="role" defaultValue="user">
@@ -260,7 +289,6 @@ export default function UsersPanel({ session }: { session: SessionUser }) {
                     <option value="super_admin">Super admin</option>
                   </select>
                 </label>
-
                 <button className="button button-primary" type="submit" disabled={busy}>
                   {busy ? "Creating…" : "Create account"} <span>→</span>
                 </button>
